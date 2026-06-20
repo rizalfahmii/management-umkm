@@ -16,5 +16,9 @@ func RouteInit(r *fiber.App) {
 	r.Get("/category", inventory.GetAllCategory)
 	r.Delete("/category/:id", inventory.DeleteDataCategory)
 	r.Post("/category", inventory.PostDataCategory)
+    
+
+	r.Post("/stock-log", inventory.PostDataStocklog)
+	
 
 }

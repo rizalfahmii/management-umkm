@@ -154,3 +154,54 @@ func DeleteDataProduct(ctx *fiber.Ctx) error {
 		"message": "success deleted data!",
 	})
 }
+
+func PostDataStocklog(ctx *fiber.Ctx) error {
+	stocklog := new(request.StockLogRequest)
+
+	err := ctx.BodyParser(stocklog)
+	if err != nil {
+		return ctx.JSON(fiber.Map{
+			"message": "invalid request",
+		})
+	}
+
+	newStockLog := entity.Stocklog{
+		Type:      stocklog.Type,
+		Qty:       stocklog.Qty,
+		Note:      stocklog.Note,
+		ProductId: stocklog.ProductId,
+	}
+	errDB := database.DB.Create(&newStockLog).Error
+	if errDB != nil {
+		return ctx.JSON(fiber.Map{
+			"message": "failed store data",
+		})
+	}
+	database.DB.Preload("Product.Category").First(&newStockLog, newStockLog.ID)
+
+	//ambil product dulu
+	var product entity.Product
+	errGet := database.DB.First(&product, stocklog.ProductId).Error
+	if errGet != nil {
+		return ctx.Status(404).JSON(fiber.Map{
+			"message": "product not found",
+		})
+	}
+
+	//hitung product
+	if stocklog.Type == "IN" {
+		product.Stock += stocklog.Qty
+	} else if stocklog.Type == "OUT" {
+		product.Stock -= stocklog.Qty
+	}
+	if product.Stock < 0 {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "stok tidak valid",
+		})
+	}
+	database.DB.Save(&product)
+	return ctx.JSON(fiber.Map{
+		"message": "success",
+		"data":    newStockLog,
+	})
+}
